@@ -15,6 +15,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 app = Flask(__name__)
 bot = Bot(token=TOKEN)
+print("BOT_TOKEN =", TOKEN)
 application = ApplicationBuilder().token(TOKEN).build()
 
 conv_handler = ConversationHandler(
