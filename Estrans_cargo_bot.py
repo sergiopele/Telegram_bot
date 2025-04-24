@@ -1,16 +1,10 @@
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    ContextTypes, CommandHandler, MessageHandler,
-    ConversationHandler, filters
-)
+from telegram.ext import ContextTypes
 
-# States
 CHOOSING, NAME, PHONE, ADDRESS, MESSAGE = range(5)
 
-# Replace with your actual Telegram user ID
 YOUR_ID = 535744015
 
-# Static texts
 SOCIAL_LINKS = (
     "Дякуємо за заявку!\n\nНаші соцмережі:\n"
     "<a href='https://www.facebook.com/groups/1814614405457006?locale=uk_UA'>Facebook</a>\n"
@@ -31,8 +25,8 @@ MAIN_MENU = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("✅ /start command received")
     await update.message.reply_text("Привіт! Обери дію:", reply_markup=MAIN_MENU)
     return CHOOSING
 
@@ -66,7 +60,6 @@ async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['message'] = update.message.text
-
     summary = (
         f"Нова заявка:\n"
         f"Ім’я: {context.user_data['name']}\n"
@@ -74,7 +67,6 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Адреса: {context.user_data['address']}\n"
         f"Повідомлення: {context.user_data['message']}"
     )
-
     await context.bot.send_message(chat_id=YOUR_ID, text=summary)
     await update.message.reply_text(SOCIAL_LINKS, parse_mode="HTML")
     await update.message.reply_text("Готово! Оберіть наступну дію:", reply_markup=MAIN_MENU)
