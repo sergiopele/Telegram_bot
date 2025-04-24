@@ -11,17 +11,16 @@ from Estrans_cargo_bot import (
     CHOOSING, NAME, PHONE, ADDRESS, MESSAGE
 )
 
-# Load token from Railway environment variable
+# Load token
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Initialize Flask and Bot
+# Initialize Flask
 app = Flask(__name__)
-bot = Bot(token=TOKEN)
 
-# Build Telegram application
+# Build telegram bot app
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Register the full conversation flow
+# Handlers
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -36,21 +35,11 @@ conv_handler = ConversationHandler(
 
 application.add_handler(conv_handler)
 
-# Initialize app so it starts processing updates via webhook
-application.initialize()
-
-# Define the webhook route
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    application.update_queue.put(update)
-    return "ok"
-
-# Health check
-@app.route("/", methods=["GET"])
-def health():
-    return "🚀 Telegram Bot is running."
-
-# Start the Flask server
+# Run as webhook listener
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    # 🚨 Launch webhook server (built-in to PTB) instead of Flask
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        webhook_url=f"https://remarkable-happiness.up.railway.app/{TOKEN}"
+    )
