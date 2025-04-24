@@ -1,6 +1,5 @@
 import os
-from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     filters, ConversationHandler, ContextTypes
@@ -11,16 +10,15 @@ from Estrans_cargo_bot import (
     CHOOSING, NAME, PHONE, ADDRESS, MESSAGE
 )
 
-# Load token
+# Bot token and webhook config
 TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_PATH = f"/{TOKEN}"
+WEBHOOK_URL = f"https://remarkable-happiness.up.railway.app{WEBHOOK_PATH}"
 
-# Initialize Flask
-app = Flask(__name__)
-
-# Build telegram bot app
+# Create bot application
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Handlers
+# Register full conversation flow
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -35,11 +33,12 @@ conv_handler = ConversationHandler(
 
 application.add_handler(conv_handler)
 
-# Run as webhook listener
+# Start the webhook server
 if __name__ == "__main__":
-    # 🚨 Launch webhook server (built-in to PTB) instead of Flask
+    print(f"✅ Bot is starting with webhook: {WEBHOOK_URL}")
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
-        webhook_url=f"https://remarkable-happiness.up.railway.app/{TOKEN}"
+        webhook_path=WEBHOOK_PATH,
+        webhook_url=WEBHOOK_URL
     )
