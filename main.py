@@ -17,7 +17,6 @@ app = Flask(__name__)
 bot = Bot(token=TOKEN)
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Define the full conversation handler
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -30,7 +29,6 @@ conv_handler = ConversationHandler(
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-# Register the conversation
 application.add_handler(conv_handler)
 
 @app.route(f"/{TOKEN}", methods=["POST"])
