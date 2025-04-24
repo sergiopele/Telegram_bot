@@ -1,13 +1,16 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    filters, ConversationHandler, ContextTypes
+    ContextTypes, CommandHandler, MessageHandler,
+    ConversationHandler, filters
 )
 
+# States
 CHOOSING, NAME, PHONE, ADDRESS, MESSAGE = range(5)
 
-YOUR_ID = 535744015  # заміни на свій Telegram ID
+# Replace with your actual Telegram user ID
+YOUR_ID = 535744015
 
+# Static texts
 SOCIAL_LINKS = (
     "Дякуємо за заявку!\n\nНаші соцмережі:\n"
     "<a href='https://www.facebook.com/groups/1814614405457006?locale=uk_UA'>Facebook</a>\n"
@@ -28,6 +31,7 @@ MAIN_MENU = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привіт! Обери дію:", reply_markup=MAIN_MENU)
     return CHOOSING
@@ -79,25 +83,3 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
     return CHOOSING
-
-def main():
-    app = ApplicationBuilder().token("7450012874:AAHeRL3qGhYYjB31DlEnaa9hef5-R2ptO60").build()
-
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            CHOOSING: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_action)],
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
-            MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_message)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    app.add_handler(conv_handler)
-    print("Бот запущено 🚀")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
