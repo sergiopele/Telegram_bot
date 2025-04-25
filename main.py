@@ -8,7 +8,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot is alive and responding!")
 
 if not TOKEN:
-    raise RuntimeError("❌ BOT_TOKEN is missing in environment variables!")
+    raise RuntimeError("❌ BOT_TOKEN is missing!")
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
@@ -18,5 +18,6 @@ if __name__ == "__main__":
     app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
-        webhook_url="https://remarkable-happiness.up.railway.app/"
+        url_path=TOKEN,  # 👈 this makes the endpoint match
+        webhook_url=f"https://remarkable-happiness.up.railway.app/{TOKEN}" 
     )
