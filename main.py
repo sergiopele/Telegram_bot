@@ -1,101 +1,93 @@
 import os
-from telegram import Update, ReplyKeyboardMarkup
+import logging
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     filters, ConversationHandler, ContextTypes
 )
 
+# Enable logging to Railway
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
 CHOOSING, NAME, PHONE, ADDRESS, MESSAGE = range(5)
-
-TOKEN = os.getenv("BOT_TOKEN")
-if not TOKEN:
-    raise RuntimeError("❌ BOT_TOKEN environment variable is missing!")
-
-MAIN_MENU = ReplyKeyboardMarkup(
-    [["Оформити заявку"], ["Зв’язок з водієм", "Умови та розцінки"]],
-    resize_keyboard=True
-)
-
-SOCIAL_LINKS = (
-    "Дякуємо за заявку!\n\nНаші соцмережі:\n"
-    "<a href='https://www.facebook.com/groups/1814614405457006?locale=uk_UA'>Facebook</a>\n"
-    "<a href='https://t.me/estransuanor'>Telegram</a>"
-)
-
-CONTACT_LINKS = (
-    "Контакти водія:\n"
-    "WhatsApp: https://wa.me/380963508202\n"
-    "Telegram: https://t.me/Phant0mWAdeR\n"
-    "Телефон: +4796801527"
-)
-
-PRICING_URL = "https://t.me/estransuanor/13"
-
+user_data_store = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привіт! Обери дію:", reply_markup=MAIN_MENU)
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id] = {}
+    keyboard = [[KeyboardButton("Відправити посилку"), KeyboardButton("Купити квиток")]]
+    await update.message.reply_text(
+        "👋 Вітаємо! Що бажаєте зробити?",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    logger.info(f"User {chat_id} started a new session.")
     return CHOOSING
-
 
 async def choose_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    if text == "Оформити заявку":
-        await update.message.reply_text("Введіть своє ім’я:")
-        return NAME
-    elif text == "Зв’язок з водієм":
-        await update.message.reply_text(CONTACT_LINKS)
-    elif text == "Умови та розцінки":
-        await update.message.reply_text(f"Ознайомтеся з умовами:\n{PRICING_URL}")
-
-    await update.message.reply_text("Обери наступну дію:", reply_markup=MAIN_MENU)
-    return CHOOSING
-
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id]["action"] = update.message.text
+    await update.message.reply_text("Введіть ім’я:")
+    logger.info(f"User {chat_id} chose action: {update.message.text}")
+    return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['name'] = update.message.text
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id]["name"] = update.message.text
     await update.message.reply_text("Введіть номер телефону:")
+    logger.info(f"User {chat_id} entered name: {update.message.text}")
     return PHONE
 
-
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['phone'] = update.message.text
-    await update.message.reply_text("Введіть адресу (місто, вулиця, номер):")
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id]["phone"] = update.message.text
+    await update.message.reply_text("Введіть адресу:")
+    logger.info(f"User {chat_id} entered phone: {update.message.text}")
     return ADDRESS
 
-
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['address'] = update.message.text
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id]["address"] = update.message.text
     await update.message.reply_text("Напишіть повідомлення або деталі:")
+    logger.info(f"User {chat_id} entered address: {update.message.text}")
     return MESSAGE
 
-
 async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['message'] = update.message.text
+    chat_id = update.effective_chat.id
+    user_data_store[chat_id]["message"] = update.message.text
+    data = user_data_store.get(chat_id, {})
+    logger.info(f"User {chat_id} completed form: {data}")
+
     summary = (
-        f"Нова заявка:\n"
-        f"Ім’я: {context.user_data['name']}\n"
-        f"Телефон: {context.user_data['phone']}\n"
-        f"Адреса: {context.user_data['address']}\n"
-        f"Повідомлення: {context.user_data['message']}"
+        "Дякуємо за заявку!\n\n"
+        f"🔹 Дія: {data.get('action')}\n"
+        f"👤 Ім’я: {data.get('name')}\n"
+        f"📞 Телефон: {data.get('phone')}\n"
+        f"📍 Адреса: {data.get('address')}\n"
+        f"✉️ Повідомлення: {data.get('message')}\n\n"
+        "Наші соцмережі:\n"
+        "[Facebook](https://www.facebook.com/profile.php?id=100063475403868)\n"
+        "[Telegram](https://t.me/estransuanor)"
     )
-    await update.message.reply_text(SOCIAL_LINKS, parse_mode="HTML")
-    await update.message.reply_text("Готово! Оберіть наступну дію:", reply_markup=MAIN_MENU)
-    return CHOOSING
-
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
-    return CHOOSING
-
+    await update.message.reply_text(summary, parse_mode="Markdown")
+    return ConversationHandler.END
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.delete_webhook(drop_pending_updates=True)
-    await update.message.reply_text("♻️ Webhook reset successful. Bot is now polling.")
+    chat_id = update.effective_chat.id
+    user_data_store.pop(chat_id, None)
+    logger.info(f"User {chat_id} sent /reset. Session reset.")
     return await start(update, context)
 
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    logger.info(f"User {chat_id} cancelled the conversation.")
+    await update.message.reply_text("Скасовано.")
+    return ConversationHandler.END
 
-# Build the bot
-app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
@@ -106,13 +98,10 @@ conv_handler = ConversationHandler(
         ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
         MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_message)],
     },
-    fallbacks=[CommandHandler("cancel", cancel)],
+    fallbacks=[CommandHandler("cancel", cancel), CommandHandler("reset", reset)],
 )
 
-# Register handlers
 app.add_handler(conv_handler)
 app.add_handler(CommandHandler("reset", reset))
-
-if __name__ == "__main__":
-    print("🟢 Estrans Cargo Bot is running (polling)...")
-    app.run_polling()
+logger.info("🚀 Estrans Cargo Bot is starting...")
+app.run_polling()
