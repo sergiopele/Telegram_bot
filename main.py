@@ -1,19 +1,23 @@
 import os
+import aiohttp
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    ConversationHandler, ContextTypes, filters
+    ApplicationBuilder, CommandHandler, MessageHandler, ConversationHandler,
+    ContextTypes, filters
 )
 
-# Telegram bot token
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
-    raise RuntimeError("❌ BOT_TOKEN is missing!")
+    raise RuntimeError("❌ BOT_TOKEN is missing in environment variables")
 
-# States
 CHOOSING, NAME, PHONE, ADDRESS, MESSAGE = range(5)
 
-# Social and contact links
+
+MAIN_MENU = ReplyKeyboardMarkup(
+    [["Оформити заявку"], ["Зв’язок з водієм", "Умови та розцінки"]],
+    resize_keyboard=True
+)
+
 SOCIAL_LINKS = (
     "Дякуємо за заявку!\n\nНаші соцмережі:\n"
     "<a href='https://www.facebook.com/groups/1814614405457006?locale=uk_UA'>Facebook</a>\n"
@@ -29,12 +33,7 @@ CONTACT_LINKS = (
 
 PRICING_URL = "https://t.me/estransuanor/13"
 
-MAIN_MENU = ReplyKeyboardMarkup(
-    [["Оформити заявку"], ["Зв’язок з водієм", "Умови та розцінки"]],
-    resize_keyboard=True
-)
-
-# Handlers
+# Bot logic
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привіт! Обери дію:", reply_markup=MAIN_MENU)
     return CHOOSING
@@ -48,7 +47,7 @@ async def choose_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(CONTACT_LINKS)
     elif text == "Умови та розцінки":
         await update.message.reply_text(f"Ознайомтеся з умовами:\n{PRICING_URL}")
-
+    
     await update.message.reply_text("Обери наступну дію:", reply_markup=MAIN_MENU)
     return CHOOSING
 
@@ -69,10 +68,7 @@ async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['message'] = update.message.text
-
-    # Capture and log sender ID
     user_id = update.effective_user.id
-    print(f"📥 Message received from user ID: {user_id}")
 
     summary = (
         f"Нова заявка:\n"
@@ -82,7 +78,6 @@ async def get_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Повідомлення: {context.user_data['message']}"
     )
 
-    # Send confirmation to the sender
     await context.bot.send_message(chat_id=user_id, text=summary)
     await update.message.reply_text(SOCIAL_LINKS, parse_mode="HTML")
     await update.message.reply_text("Готово! Оберіть наступну дію:", reply_markup=MAIN_MENU)
@@ -92,7 +87,15 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Скасовано.", reply_markup=MAIN_MENU)
     return CHOOSING
 
-# App init
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook") as resp:
+            if resp.status == 200:
+                await update.message.reply_text("🔄 Webhook reset successful. Bot is now polling.")
+            else:
+                await update.message.reply_text(f"❌ Reset failed. Status code: {resp.status}")
+
+
 app = ApplicationBuilder().token(TOKEN).build()
 
 conv_handler = ConversationHandler(
@@ -108,6 +111,7 @@ conv_handler = ConversationHandler(
 )
 
 app.add_handler(conv_handler)
+app.add_handler(CommandHandler("reset", reset))
 
 if __name__ == "__main__":
     print("🟢 Estrans Cargo Bot is running (polling)...")
