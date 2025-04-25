@@ -1,4 +1,4 @@
-# Telegram Bot (Webhook Mode)
+# Telegram Bot 
 
 ✅ Minimal setup for running a Telegram bot on Railway.
 
